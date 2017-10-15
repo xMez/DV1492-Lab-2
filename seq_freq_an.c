@@ -23,7 +23,6 @@ struct FreqTable {
 	int arrayCapacity;
 	struct Word *wordArray;
 };
-
 struct Parameters {
 	char *fileContent;
 	int fileSize;
@@ -42,7 +41,7 @@ size_t hash(char* word);		//hash function
 void rehash(struct FreqTable** table, size_t numberOfWords);	//expands hashtable
 size_t insert(struct FreqTable** table, char* word);	//inserts word in hashtble
 int find(struct FreqTable* table, char* word);	//find a certain entry in a table
-void userInteraction();
+void* userInteraction();
 
 unsigned int nThreads = 1;
 struct FreqTable* result;
@@ -83,12 +82,14 @@ int main(int argc, char ** argv)
 	}
 	frequencyAnalysis(params);
 	gettimeofday(&endTime, NULL);
-	userInteraction();
+	pthread_t userThread;
+	pthread_create(&userThread, NULL, userInteraction, NULL);
 	time = endTime.tv_sec - startTime.tv_sec + (endTime.tv_usec - startTime.tv_usec)/1000000.0;
 	printf("Analysis took %.3f seconds\n\n", time);
 	printf("Now compiling results before presentation...\n");
 	sortFreqTable(result);
 	printStats(*result);
+	pthread_join(userThread, NULL);
 	deleteFreqTable(result);
 
 	return 0;
@@ -344,7 +345,7 @@ int find(struct FreqTable* table, char* word)
 }
 
 
-void userInteraction()
+void* userInteraction()
 {
 	char userInput = '\0';
 
