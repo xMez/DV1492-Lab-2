@@ -23,6 +23,7 @@ struct FreqTable {
 	int arrayCapacity;
 	struct Word *wordArray;
 };
+
 struct Parameters {
 	char *fileContent;
 	int fileSize;
@@ -43,12 +44,17 @@ size_t insert(struct FreqTable** table, char* word);	//inserts word in hashtble
 int find(struct FreqTable* table, char* word);	//find a certain entry in a table
 void* userInteraction();
 
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
 unsigned int nThreads = 1;
 struct FreqTable* result;
 
 int main(int argc, char ** argv)
 {
 	char fileName[256];
+
+	if (argc > 1)
+		nThreads = atoi(argv[1]);
 
 	struct timeval startTime, endTime;
 	double time;
@@ -84,21 +90,24 @@ int main(int argc, char ** argv)
 		pthread_create(&(analysisThreads[i]), NULL, frequencyAnalysis, &params[i]);
 	}
 	for(int i=0 ; i<nThreads ; i++)
-	{
 		pthread_join(analysisThreads[i], NULL);	
-	}
 
 	gettimeofday(&endTime, NULL);
+
 	pthread_t userThread;
 	pthread_create(&userThread, NULL, userInteraction, NULL);
+
 	time = endTime.tv_sec - startTime.tv_sec + (endTime.tv_usec - startTime.tv_usec)/1000000.0;
 	printf("Analysis took %.3f seconds\n\n", time);
 	printf("Now compiling results before presentation...\n");
 	sortFreqTable(result);
 	printStats(*result);
-	pthread_join(userThread, NULL);
 	deleteFreqTable(result);
+
+	printf("Exiting code");
+
 	free(analysisThreads);
+	pthread_mutex_destroy(&lock);
 	return 0;
 }
 
@@ -146,11 +155,12 @@ void* frequencyAnalysis(void* params)
 		wordFromFile = strtok_r(NULL, " ", &savePtr);
 	}
 
+	pthread_mutex_lock(&lock);
 	mergeFreqTable(&result,table);
-	free(info);
+	pthread_mutex_unlock(&lock);
+
 	free(fileContent);
 	deleteFreqTable(table);
-
 }
 
 
