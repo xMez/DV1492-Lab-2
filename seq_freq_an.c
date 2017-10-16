@@ -30,7 +30,7 @@ struct Parameters {
 };
 
 
-void frequencyAnalysis(struct Parameters* info);
+void* frequencyAnalysis(void* params);
 void printStats(struct FreqTable table);	//prints some statistics from a frequency table
 int searchWord(struct FreqTable* table, char* searchWord);
 struct FreqTable* initFreqTable(size_t size);
@@ -73,14 +73,21 @@ int main(int argc, char ** argv)
 
 	/* START THREADS */
 	gettimeofday(&startTime, NULL);
+	pthread_t* analysisThreads;
+	analysisThreads = malloc(nThreads * sizeof(pthread_t));
 	struct Parameters* params = (struct Parameters*)malloc(nThreads * sizeof(struct Parameters));
 	for(int i=0 ; i<nThreads ; i++)
 	{
 		params[i].threadNr = i;
 		params[i].fileContent = fileContent;
 		params[i].fileSize = fileSize;
+		pthread_create(&(analysisThreads[i]), NULL, frequencyAnalysis, &params[i]);
 	}
-	frequencyAnalysis(params);
+	for(int i=0 ; i<nThreads ; i++)
+	{
+		pthread_join(analysisThreads[i], NULL);	
+	}
+
 	gettimeofday(&endTime, NULL);
 	pthread_t userThread;
 	pthread_create(&userThread, NULL, userInteraction, NULL);
@@ -91,15 +98,16 @@ int main(int argc, char ** argv)
 	printStats(*result);
 	pthread_join(userThread, NULL);
 	deleteFreqTable(result);
-
+	free(analysisThreads);
 	return 0;
 }
 
 
-void frequencyAnalysis(struct Parameters* info) 
+void* frequencyAnalysis(void* params) 
 {
 	char *wordFromFile, *fileContent;
 	int found;
+	struct Parameters* info = (struct Parameters*) params;
 	size_t fileSize = info->fileSize;
 
 	int offset = info->threadNr * fileSize / nThreads;
@@ -139,7 +147,7 @@ void frequencyAnalysis(struct Parameters* info)
 	}
 
 	mergeFreqTable(&result,table);
-
+	free(info);
 	free(fileContent);
 	deleteFreqTable(table);
 
